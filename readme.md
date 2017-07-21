@@ -1,3 +1,5 @@
+一个用于bitbucket代码检测的插件重构
+
 ### 打包方式：
 1.安装atlassian sdk；
 2.命令行进入插件工程根文件夹，atlas-package打包；
@@ -13,7 +15,3 @@
 - 开发文档地址:
 
 https://developer.atlassian.com/display/DOCS/Introduction+to+the+Atlassian+Plugin+SDK
-
-###### 更新日志
-
-`1.1.3` : 正式稳定版本。
