@@ -1,0 +1,387 @@
+{namespace plugin.page.cra}
+
+/**
+ * Button wrapper to create grouped buttons
+ * @param content One or more aui-button elements. Must not contain anything else.
+ * @param? id
+ * @param? extraClasses
+ * @param? extraAttributes
+ **/
+{template .buttons}
+    {call aui.buttons.buttons}
+        {param id: $id /}
+        {param content: $content /}
+        {param extraClasses: $extraClasses /}
+        {param extraAttributes: $extraAttributes /}
+    {/call}
+{/template}
+
+/**
+ * @param buttonText
+ * @param? id
+ * @param? extraClasses
+ * @param? extraAttributes
+ * @param? href
+ * @param? tagName
+ * @param? title
+ * @param? type
+ * @param? isPrimary
+ * @param? isDisabled
+ * @param? isPressed
+ * @param? iconType Options: "aui" or "custom". Adds a SPAN (type:custom) or a SPAN.aui-icon (type:aui) to A and BUTTON elements. Not supported for INPUT.
+ * @param? iconText String for assistive/hidden/alternative text for icons.
+ * @param? iconClass String added to the class attribute of the icon span. Used to set extra icon class.
+ */
+{template .button}
+    {call aui.buttons.button}
+        {param tagName: $tagName ? $tagName : ($href ? 'a' : null) /}
+        {param id: $id /}
+        {param type: $isPrimary ? 'primary' : $type /}
+        {param isDisabled: $isDisabled /}
+        {param isPressed: $isPressed /}
+        {param text: $buttonText /}
+        {param iconType: $iconType /}
+        {param iconText: $iconText /}
+        {param iconClass: $iconClass /}
+        {param extraClasses : $extraClasses /}
+        {param extraAttributes}
+            {call aui.renderExtraAttributes}{param extraAttributes: $extraAttributes /}{/call}
+            {if $href} href="{$href}"{/if}
+            {if $title} title="{$title}"{/if}
+            // @aui-override https://ecosystem.atlassian.net/browse/AUI-1398
+            // Firefox likes to maintain the disabled state of a button on page refresh. autocomplete="off" stops this.
+            {sp}autocomplete="off"
+        {/param}
+    {/call}
+{/template}
+
+
+/**
+ * Renders a pair of buttons representing a 'switch' with on and off mode. The 'off' button will have
+ * a `switch-mode-off` and the 'on' button a `switch-mode-on` class.
+ *
+ * @param isOn whether the switch is currently on, this will affect the pressed state of the rendered buttons
+ * @param? id optional ID of the switch container
+ * @param? onId optional ID of the 'on' button
+ * @param? offId optional ID of the 'off' button
+ * @param? extraClasses extra CSS classes for the switch container
+ * @param? onExtraClasses extra CSS classes for the 'on' button
+ * @param? offExtraClasses extra CSS classes for the 'off' button
+ * @param? onExtraAttributes extra attributes for the 'on' button
+ * @param? offExtraAttributes extra attributes for the 'off' button
+ * @param? onText
+ * @param? offText
+ * @param? onTitle
+ * @param? offTitle
+ */
+{template .switchButtons}
+    {call .buttons}
+        {param id: $id /}
+        {param extraClasses}
+            switch
+            {call aui.renderExtraClasses}
+                {param extraClasses: $extraClasses /}
+            {/call}
+        {/param}
+        {param content}
+            {call .button}
+                {param id: $offId /}
+                {param extraClasses}
+                    switch-mode-off
+                    {call aui.renderExtraClasses}
+                         {param extraClasses: $offExtraClasses /}
+                    {/call}
+                {/param}
+                {param extraAttributes: $offExtraAttributes /}
+                {param isPressed: not $isOn /}
+                {param buttonText: $offText /}
+                {param title: $offTitle /}
+            {/call}
+            {call .button}
+                {param id: $onId /}
+                {param extraClasses}
+                    switch-mode-on{sp}
+                    {call aui.renderExtraClasses}
+                         {param extraClasses: $onExtraClasses /}
+                    {/call}
+                {/param}
+                {param extraAttributes: $onExtraAttributes /}
+                {param isPressed: $isOn /}
+                {param buttonText: $onText /}
+                {param title: $onTitle /}
+            {/call}
+        {/param}
+    {/call}
+{/template}
+
+
+/**
+ * @param repository
+ * @param builtinConfigServletPath
+ * @param showSeverityIcon
+ * @param CheckstyleSettings
+ * @param CheckstyleVersion
+ * @param PMDSettings
+ * @param PMDVersion
+ * @param branchOptions
+ * @param branchOptionsBranches
+ * @param? errors
+ * @param? success
+ **/
+{template .repositoryConfigurationPanel}
+<html>
+<head>
+    <meta name="decorator" content="bitbucket.repository.settings">
+    <meta name="projectKey" content="{$repository.project.key}">
+    <meta name="repositorySlug" content="{$repository.slug}">
+    <meta name="activeTab" content="finecra-configuration-repo-panel">
+    <title>{{getText('cra.repo.settings.title', $repository.project.name, $repository.name)}}</title>
+</head>
+<body>
+
+{call aui.group.group}
+    {param content}
+        {call aui.group.item}
+            {param content}
+                <h2>{getText('cra.repo.settings.heading')}</h2>
+            {/param}
+        {/call}
+    {/param}
+{/call}
+
+{call aui.group.group}
+    {param content}
+        {if $errors}
+            {call aui.message.error}
+                {param title: getText('cra.repo.settings.error.title') /}
+                {param closeable: 'true' /}
+                {param id: 'errorMessage' /}
+                {param content}
+                    <p>
+                    {if $errors['ctagsEnabled']}
+                        {{getText('cra.repo.settings.validation.ctagsnotconfigured.msg')}} <a href="{$errors['ctagsEnabled'][0]}">admin section</a>.
+                    {else}
+                        {{$errors['details'] ? $errors['details'][0] : getText('cra.repo.settings.error.seebelow') }}
+                    {/if}
+                    </p>
+                {/param}
+            {/call}
+        {elseif $success}
+            {call aui.message.success}
+                {param closeable: 'true' /}
+                {param id: 'successMessage' /}
+                {param content}
+                    <p>更改保存成功。</p>
+                {/param}
+            {/call}
+        {/if}
+      {call aui.form.form}
+        {param action: '' /}
+        {param id: 'repoConfig' /}
+        {param content}
+
+        <h3>通用设置</h3>
+        {call aui.form.checkboxField}
+             {param legendContent: getText('cra.repo.settings.showSeverityIcon.enable.label') /}
+             {param fields: [[
+               'id': 'showSeverityIcon',
+               'labelText': getText('cra.repo.settings.enabled.checkbox'),
+               'descriptionText': '在pull request 的代码检查评论中显示危险级别图标（相比纯文本需要更多空间）。',
+               'isChecked': $showSeverityIcon
+               ]] /}
+        {/call}
+        <div class="field-group">
+            <label for="branchOptions">{getText('cra.repo.settings.branchOptions.label')}</label>
+            <select class="select" id="branchOptions" name="branchOptions" style="max-width: 220px">
+                <option value="" {$branchOptions == null ? 'selected="selected"' : ''}>分析全部分支</option>
+                <option value="WHITE_LIST" {$branchOptions == 'WHITE_LIST' ? 'selected="selected"' : ''}>仅分析匹配的分支</option>
+                <option value="BLACK_LIST" {$branchOptions == 'BLACK_LIST' ? 'selected="selected"' : ''}>忽略匹配的分支</option>
+            </select>
+            &nbsp;
+            <input id="branchOptionsBranches" class="text" type="text" name="branchOptionsBranches" value="{$branchOptionsBranches != null ? $branchOptionsBranches : ''}">
+            <div class="description">
+                配置需要被检查的分支，或者需要被忽略的分支（默认检查所有分支），也可以使用Bitbucket的分支权限匹配(<a target="_blank" href="https://confluence.atlassian.com/display/STASH/Branch+permission+patterns">语法请参考文档</a>)。 若有多个分支，使用空格作为分隔符， 例如: release-* develop
+            </div>
+        </div>
+        <div class="aui-tabs horizontal-tabs" role="application">
+            <ul class="tabs-menu" role="tablist">
+                <li class="menu-item {if ($errors['errorTab'] and $errors['errorTab'][0] == 'Checkstyle') or not $errors['errorTab']}active-tab{/if}" role="presentation">
+                    <a href="#cra-checkstyle" id="aui-uid-0-1420126943808" role="tab" aria-selected="true"><strong>Checkstyle{if $CheckstyleSettings.enabled}*{/if}</strong></a>
+                </li>
+                <li class="menu-item {if ($errors['errorTab'] and $errors['errorTab'][0] == 'PMD')}active-tab{/if}" role="presentation">
+                    <a href="#cra-pmd" id="aui-uid-1-1420126943808" role="tab" aria-selected="false"><strong>PMD{if $PMDSettings.enabled}*{/if}</strong></a>
+                </li>
+            </ul>
+            <div class="tabs-pane {if ($errors['errorTab'] and $errors['errorTab'][0] == 'Checkstyle') or not $errors['errorTab']}active-pane{/if}" id="cra-checkstyle" role="tabpanel" aria-hidden="false">
+                // *** CHECKSTYLE ***
+                <p><h4>Checkstyle <span class="aui-icon aui-icon-small aui-iconfont-help" title="Built-in version: {$CheckstyleVersion}"></span></h4>
+                {call aui.form.checkboxField}
+                  {param legendContent: getText('cra.repo.settings.checkstyle.enable.label') /}
+
+                  {param fields: [[
+                    'id': 'CheckstyleEnabled',
+                    'labelText': getText('cra.repo.settings.enabled.checkbox'),
+                    'isChecked': $CheckstyleSettings.enabled,
+                    ]] /}
+                {/call}
+                <fieldset id="checkstyle-config" class="group">
+                <legend>
+                    <span>使用Checkstyle XML配置<span class="aui-icon icon-required"></span></span>
+                </legend>
+
+                <div class="radio">
+                    {call aui.form.input}
+                        {param name: 'CheckstyleConfigFrom' /}
+                        {param type: 'radio' /}
+                        {param isChecked: $CheckstyleSettings.configFrom == 'BUILTIN'/}
+                        {param value: 'BUILTIN' /}
+                    {/call}
+                    <label for="CheckstyleConfigFrom"><a href="{$builtinConfigServletPath}?name=Checkstyle" target="_blank">内置 (Google Java 规范协议)</a></label>
+                </div>
+                <div class="radio">
+                    {call aui.form.input}
+                        {param name: 'CheckstyleConfigFrom' /}
+                        {param type: 'radio' /}
+                        {param isChecked: $CheckstyleSettings.configFrom == 'FROM_URL' /}
+                        {param value: 'FROM_URL' /}
+                    {/call}
+                    <label for="CheckstyleConfigFrom">来自URL或文件路径：</label><br>
+                    {call aui.form.textField}
+                        {param labelContent: '' /}
+                        {param id: 'CheckstyleConfigUrl' /}
+                        {param value: $CheckstyleSettings.configUrl /}
+                        {param fieldWidth: 'long' /}
+                        {param errorTexts: $errors ? $errors['CheckstyleConfigUrl'] : null /}
+                    {/call}
+                    <div class="description">来自Bitbucket运行设备中配置文件的绝对路径(例如  /home/bitbucket/checkstyle.xml)，或URL(例如 https://raw.githubusercontent.com/checkstyle/checkstyle/master/src/main/resources/google_checks.xml)。</div>
+                </div>
+                <div class="radio">
+                    {call aui.form.input}
+                        {param name: 'CheckstyleConfigFrom' /}
+                        {param type: 'radio' /}
+                        {param isChecked: $CheckstyleSettings.configFrom == 'FROM_REPO' /}
+                        {param value: 'FROM_REPO' /}
+                    {/call}
+                    <label for="CheckstyleConfigFrom">来自当前Git仓库：</label><br>
+                    {call aui.form.textField}
+                        {param labelContent: '' /}
+                        {param id: 'CheckstyleConfigRepoPath' /}
+                        {param value: $CheckstyleSettings.configRepoPath /}
+                        {param fieldWidth: 'long' /}
+                        {param errorTexts: $errors ? $errors['CheckstyleConfigRepoPath'] : null /}
+                    {/call}
+                    <div class="description">当前Git仓库的绝对路径 (例如  config/tools/checkstyle-all.xml)。</div>
+                </div>
+                </fieldset>
+                {call aui.form.textField}
+                  {param id: 'CheckstyleMaxMergeErrors' /}
+                  {param labelContent: getText('cra.repo.settings.errorlimit.label') /}
+                  {param value: $CheckstyleSettings.maxMergeErrors == 0 ? '0' : $CheckstyleSettings.maxMergeErrors /}
+                  {param descriptionText: getText('cra.repo.settings.errorlimit.description') /}
+                  {param errorTexts: $errors ? $errors['CheckstyleMaxMergeErrors'] : null /}
+                {/call}
+            </div>
+             <div class="tabs-pane {if ($errors['errorTab'] and $errors['errorTab'][0] == 'PMD')}active-pane{/if}" id="cra-pmd" role="tabpanel" aria-hidden="true">
+                                // *** PMD ***
+                                <p><h4>PMD <span class="aui-icon aui-icon-small aui-iconfont-help" title="Built-in version: {$PMDVersion}"></span></h4>
+
+                                {call aui.form.checkboxField}
+                                    {param legendContent: getText('cra.repo.settings.pmd.enable.label') /}
+
+                                    {param fields: [[
+                                      'id': 'PMDEnabled',
+                                      'labelText': getText('cra.repo.settings.enabled.checkbox'),
+                                      'isChecked': $PMDSettings.enabled
+                                      ]] /}
+                                {/call}
+                                <fieldset id="pmd-config" class="group">
+                                    <legend>
+                                        <span>使用PMD XML配置<span class="aui-icon icon-required"></span></span>
+                                    </legend>
+                                    <div class="radio">
+                                        {call aui.form.input}
+                                            {param name: 'PMDConfigFrom' /}
+                                            {param type: 'radio' /}
+                                            {param isChecked: $PMDSettings.configFrom ? $PMDSettings.configFrom == 'BUILTIN' :  false /}
+                                            {param value: 'BUILTIN' /}
+                                        {/call}
+                                        <label for="PMDConfigFrom"><a href="{$builtinConfigServletPath}?name=PMD" target="_blank">内置 (PMD basic Java ruleset)</a></label>
+                                    </div>
+                                    <div class="radio">
+                                        {call aui.form.input}
+                                            {param name: 'PMDConfigFrom' /}
+                                            {param type: 'radio' /}
+                                            {param isChecked: $PMDSettings.configFrom ? $PMDSettings.configFrom == 'FROM_URL' :  false /}
+                                            {param value: 'FROM_URL' /}
+                                        {/call}
+                                        <label for="PMDConfigFrom">来自URL、文件路径或者Mysql数据库链接：</label><br>
+                                        {call aui.form.textField}
+                                            {param labelContent: '' /}
+                                            {param id: 'PMDConfigUrl' /}
+                                            {param value: $PMDSettings.configUrl /}
+                                            {param fieldWidth: 'long' /}
+                                            {param errorTexts: $errors ? $errors['PMDConfigUrl'] : null /}
+                                        {/call}
+                                        <div class="description">来自Bitbucket运行设备中配置文件的URL(例如，https://github.com/pmd/pmd.xml)，或绝对路径 (例如，/home/bitbucket/pmd.xml)，或Mysql数据库(例如，jdbc:mysql://121.42.43.152:3306/tools?user=xxx&password=xxxx) 。</div>
+                                    </div>
+                                    <div class="radio">
+                                        {call aui.form.input}
+                                            {param name: 'PMDConfigFrom' /}
+                                            {param type: 'radio' /}
+                                            {param isChecked: $PMDSettings.configFrom ? $PMDSettings.configFrom == 'FROM_REPO' :  false /}
+                                            {param value: 'FROM_REPO' /}
+                                        {/call}
+                                        <label for="PMDConfigFrom">来自当前Git仓库：</label><br>
+                                        {call aui.form.textField}
+                                            {param labelContent: '' /}
+                                            {param id: 'PMDConfigRepoPath' /}
+                                            {param value: $PMDSettings.configRepoPath /}
+                                            {param fieldWidth: 'long' /}
+                                            {param errorTexts: $errors ? $errors['PMDConfigRepoPath'] : null /}
+                                        {/call}
+                                        <div class="description">当前Git仓库的绝对路径(例如，config/tools/pmd-all.xml).</div>
+                                    </div>
+
+                                  </fieldset>
+                                {call aui.form.checkboxField}
+                                    {param legendContent: getText('cra.repo.settings.pmd.examples.enable.label') /}
+
+                                    {param fields: [[
+                                      'id': 'PMDViolationExamplesEnabled',
+                                      'labelText': getText('cra.repo.settings.enabled.checkbox'),
+                                      'isChecked': $PMDSettings.violationExamplesEnabled,
+                                      ]] /}
+                                {/call}
+                                {call aui.form.textField}
+                                    {param id: 'PMDMaxMergeErrors' /}
+                                    {param labelContent: getText('cra.repo.settings.errorlimit.label') /}
+                                    {param value: $PMDSettings.maxMergeErrors == 0 ? '0' : $PMDSettings.maxMergeErrors /}
+                                    {param descriptionText: getText('cra.repo.settings.errorlimit.description') /}
+                                    {param errorTexts: $errors ? $errors['PMDMaxMergeErrors'] : null /}
+                                {/call}
+                        </div>
+        </div>
+        <br>
+        {call aui.form.buttons}
+            {param content}
+              {call aui.form.submit}
+                {param id: 'submit' /}
+                {param text: getText('cra.repo.settings.submit') /}
+                {param type: 'submit' /}
+                {param extraClasses: 'aui-button-primary' /}
+              {/call}
+              {call aui.form.linkButton}
+                {param href: nav_repo_settings($repository.project, $repository) /}
+                {param text: '取消' /}
+              {/call}
+            {/param}
+        {/call}
+
+        {/param}
+      {/call}
+    {/param}
+{/call}
+
+</body>
+</html>
+{/template}

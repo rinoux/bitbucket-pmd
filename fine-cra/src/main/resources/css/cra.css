@@ -1,0 +1,67 @@
+/*
+ * Copyright (c) 2014 by Mibex Software GmbH, Zurich, Switzerland.
+ *
+ * All rights reserved.
+ *
+ * This product is the proprietary and sole property of Mibex Software GmbH.
+ * Use, duplication or dissemination is forbidden and is subject to prior
+ * written consent of Mibex Software GmbH (office@mibex.ch).
+ * CRA原版的css文件，修改了images文件夹为img,删除ctags内容
+ */
+
+div.inline-image {
+    background-repeat: no-repeat;
+    width: 16px;
+    height: 16px;
+    min-width: 16px;
+    min-height: 16px;
+    display: inline-block;
+}
+
+.separator {
+    background: #ffffff;
+    border-bottom: 1px solid #cccccc;
+    color: #333333;
+}
+
+.disabled {
+    color: rgb(84, 84, 84)
+}
+/* Severity icons */
+div.severity-error {
+    background:url("img/severity/error_s.png");
+}
+
+div.severity-fatal {
+    background:url("img/severity/fatal_s.png");
+}
+
+div.severity-info {
+    background:url("img/severity/info_s.png");
+}
+
+div.severity-warning {
+    background:url("img/severity/warning_s.png");
+}
+
+
+.nomatches {
+    font-style: italic;
+    font-weight: bold;
+}
+
+code.signature {
+    font-family: Consolas, Menlo, Monaco, Lucida Console, Liberation Mono, DejaVu Sans Mono, Bitstream Vera Sans Mono, Courier New, monospace, serif;
+    white-space: normal;
+    word-wrap: break-word;
+}
+
+div.taginfo {
+    white-space: nowrap;
+}
+
+html.cra-wait, html.cra-wait * { cursor: wait !important; }
+
+#branchOptionsBranches {
+    max-width: 380px;
+}

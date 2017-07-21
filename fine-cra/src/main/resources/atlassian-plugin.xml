@@ -1,0 +1,124 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<atlassian-plugin key="com.fr.cra" name="FINE CRA" plugins-version="2">
+    <plugin-info>
+        <description>整合Checkstyle和PMD的pull request代码检查工具插件</description>
+        <version>1.0</version>
+        <vendor name="FineReport" url="https://www.finereport.com"/>
+        <param name="plugin-icon">img/cra-plugin-icon.png</param>
+        <param name="plugin-logo">img/cra-plugin-logo.png</param>
+        <param name="plugin-banner">img/cra-plugin-banner.png</param>
+    </plugin-info>
+    <resource type="i18n" name="FineCra" location="FineCra"/>
+    <!--用户端cra配置时的资源-->
+    <client-resource key="finecra-configuration-resources" name="Code Review Assistant Resources">
+        <directory location="/soy/"/>
+        <resource type="download" name="repo-config.js" location="/js/repo-config.js"/>
+        <resource type="download" name="cra.css" location="/css/cra.css"/>
+        <resource type="download" name="img/" location="/img"/>
+        <dependency>com.atlassian.bitbucket.server.bitbucket-web:global</dependency>
+        <dependency>com.atlassian.bitbucket.server.bitbucket-web-api:amd</dependency>
+        <dependency>com.atlassian.bitbucket.server.bitbucket-web-api:aui</dependency>
+        <dependency>com.atlassian.bitbucket.server.bitbucket-web-api:jquery</dependency>
+        <context>plugin.page.cra</context>
+    </client-resource>
+    <!--客户端CRA启动分析需要的资源-->
+    <client-resource key="finefinecra-run-analysis-resources" name="Run analysis resources">
+        <resource type="download" name="toggle-analysis.js" location="/js/toggle-analysis.js"/>
+        <dependency>com.atlassian.auiplugin:ajs</dependency>
+        <dependency>com.atlassian.bitbucket.server.bitbucket-web-api:amd</dependency>
+        <dependency>com.atlassian.bitbucket.server.bitbucket-web-api:aui</dependency>
+        <dependency>com.atlassian.bitbucket.server.bitbucket-web-api:jquery</dependency>
+        <dependency>com.atlassian.bitbucket.server.bitbucket-web-api:navbuilder</dependency>
+        <dependency>com.atlassian.bitbucket.server.bitbucket-web-api:server</dependency>
+        <dependency>com.atlassian.bitbucket.server.bitbucket-web-api:state</dependency>
+        <context>bitbucket.page.pullRequest.view</context>
+    </client-resource>
+    <!--分析器数据web资源-->
+    <web-resource key="finecra-pr-analyzer-statistics-resources">
+        <transformation extension="soy">
+            <transformer key="soyTransformer"/>
+        </transformation>
+        <resource type="download" name="review-statistics-view.soy.js" location="/soy/review-statistics-view.soy"/>
+        <resource type="download" name="review-statistics-provider.js" location="/js/review-statistics-provider.js"/>
+        <resource type="download" name="cra.css" location="/css/cra.css"/>
+        <resource type="download" name="img/" location="/img"/>
+        <dependency>com.atlassian.auiplugin:ajs</dependency>
+        <dependency>com.atlassian.bitbucket.bitbucket-web-api:pull-request-web-panels</dependency>
+        <dependency>com.atlassian.auiplugin:aui-experimental-expander</dependency>
+    </web-resource>
+    <!--分析器数据面板-->
+    <client-web-panel key="finecra-pr-analyzer-statistics-panel" name="Code Review Assistant Analyzer Statistics" location="bitbucket.pull-request.related-entities" weight="5">
+        <client-context-provider>require('fr/cra-review-statistics').showCodeReviewStatistics</client-context-provider>
+        <client-condition>require('fr/cra-review-statistics').isCodeReviewStatisticsActive</client-condition>
+        <resource name="view" type="soy" location="com.fr.cra:finecra-pr-analyzer-statistics-resources/com.fr.cra.prAnalyzerStatisticsPanelEmpty"/>
+        <dependency>com.fr.cra:finecra-pr-analyzer-statistics-resources</dependency>
+    </client-web-panel>s
+    <!--repo 左侧设置栏add-ons 的cra配置面板 -->
+    <web-item key="finecra-configuration-repo-panel" name="Code Review Assistant Repository Settings" weight="30" section="bitbucket.repository.settings.panel/repository-settings-addons-section">
+        <conditions type="OR">
+            <condition class="com.atlassian.bitbucket.web.conditions.HasRepositoryPermissionCondition">
+                <param name="permission">REPO_ADMIN</param>
+            </condition>
+            <condition class="com.atlassian.bitbucket.web.conditions.HasGlobalPermissionCondition">
+                <param name="permission">SYS_ADMIN</param>
+            </condition>
+        </conditions>
+        <label key="plugin.page.repo.ci.info.tab.label">代码检查设置</label>
+        <tooltip key="plugin.page.repo.ci.sys.info.tab.tooltip">编辑当前仓库的代码检查设置</tooltip>
+        <link>/plugins/servlet/cra/repo-admin/${repository.project.key}/${repository.slug}</link>
+    </web-item>
+    <!--cra启动分析按钮的web页面位置，Merge右侧展开'Run CRA Analysis'按钮-->
+    <web-item key="finecra-run-analysis" name="Runs code review analysis" weight="500" section="bitbucket.pull-request.toolbar.actions">
+        <conditions type="AND">
+            <condition class="com.atlassian.bitbucket.web.conditions.HasRepositoryPermissionCondition">
+                <param name="permission">REPO_WRITE</param>
+            </condition>
+            <condition class="com.fr.cra.pullrequest.CraEnabledForBranchCondition"/>
+        </conditions>
+        <label key="cra.run.analysis.label"/>
+        <tooltip key="cra.run.analysis.tooltip"/>
+        <styleClass>finecra-run-analysis-button</styleClass>
+    </web-item>
+    <!--cra移除评论的web页面位置，在评论下方的一排选项中-->
+    <web-item key="finecra-remove-comments" name="Removes the pull request comments of the code review" weight="510" section="bitbucket.pull-request.toolbar.actions">
+        <conditions type="AND">
+            <condition class="com.atlassian.bitbucket.web.conditions.HasRepositoryPermissionCondition">
+                <param name="permission">REPO_WRITE</param>
+            </condition>
+            <condition class="com.fr.cra.pullrequest.CraEnabledForBranchCondition"/>
+        </conditions>
+        <label key="cra.remove.comments.label"/>
+        <tooltip key="cra.remove.comments.tooltip"/>
+        <styleClass>finecra-remove-comments-button</styleClass>
+    </web-item>
+
+    <!--repo 配置cra的servlet,RepoConfigServlet做soycontext配置渲染工作-->
+    <servlet key="finecra-configuration-repo" name="Code Review Assistant Repository Configuration Servlet" class="com.fr.cra.config.repo.RepoConfigServlet">
+        <url-pattern>/cra/repo-admin/*</url-pattern>
+    </servlet>
+    <!--CRA危险等级图标的servlet-->
+    <servlet key="finecra-serverity-image" name="Code Review Assistant Severity Image Servlet" class="com.fr.cra.SeverityImageServlet">
+        <url-pattern>/cra/severity-image</url-pattern>
+    </servlet>
+    <!--内置cra配置的servlet,返回配置文件流-->
+    <servlet key="finecra-builtinconfig-listing" name="Code Review Assistant Built-in Static Analyzer Config Listing" class="com.fr.cra.BuiltinConfigListingServlet">
+        <url-pattern>/cra/builtin-config</url-pattern>
+    </servlet>
+    <!--cra rest url路径-->
+    <rest key="finecra-rest-resources" path="/cra" version="1.0">
+        <description>Provides the REST resource for this plugin.</description>
+    </rest>
+    <!--MERGE CHECK -->
+    <merge-check key="finecra-merge-check" class="com.fr.cra.mergecheck.CodeAnalysisMergeCheck"/>
+
+    <!--ao模块,插件的所有ao对象-->
+    <ao key="ao-module">
+        <description>The ActiveObject entities for this plugin.</description>
+        <entity>com.fr.cra.config.repo.AoRepoConfig</entity>
+        <entity>com.fr.cra.config.repo.AoStaticAnalyzerSettings</entity>
+        <entity>com.fr.cra.config.serviceuser.AoServiceUserConfig</entity>
+        <entity>com.fr.cra.statistics.AoCodeReviewStatistics</entity>
+        <entity>com.fr.cra.statistics.AoStaticAnalyzerResults</entity>
+    </ao>
+</atlassian-plugin>

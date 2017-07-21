@@ -1,0 +1,60 @@
+{namespace com.fr.cra}
+
+/**
+ * 这个就是在pr查看检查数据结果的页面了
+ * @param? statistics
+ * @param? error
+ * @param? notUpToDate
+ */
+{template .prAnalyzerStatisticsPanel}
+    {if $error}
+        <div class="aui-message aui-message-error">
+            <p class="title">
+                <strong>获取CRA代码检查数据时发生错误:</strong>
+            </p>
+            <p>{{$error}}</p>
+        </div>
+    {else}
+        <table class="aui">
+            <thead>
+                <tr>
+                    <th id="name">{if $notUpToDate}<span title="An analysis is currently running. This view will be automatically refreshed once it is finshed" class="aui-icon aui-icon-wait">Wait</span>{/if}</th>
+                    <th id="fatal"><div class="inline-image severity-fatal" title="Fatal (e.g. the configuration file could not be found or the static code analyzer crashed)"></div></th>
+                    <th id="error"><div class="inline-image severity-error" title="Error (a serious violation that results in software faults)"></div></th>
+                    <th id="warning"><div class="inline-image severity-warning" title="Warning (a potential problem that needs to be investigated)"></div></th>
+                    <th id="info"><div class="inline-image severity-info" title="Info (just for information purposes)"></div></th>
+                </tr>
+            </thead>
+            <tbody>
+                {if $notUpToDate}
+                    <tr><td colspan="5">代码检查数据正在准备...</td></tr>
+                {elseif $statistics}
+                    {foreach $key in keys($statistics)}
+                        <tr {if isLast($key)}style="border-bottom: 0px;"{/if}>
+                            <td headers="name"><b>{$key}</b></td>
+                            {if length(keys($statistics[$key])) > 0}
+                                <td headers="fatal">{$statistics[$key]['FATAL']}</td>
+                                <td headers="error">{$statistics[$key]['ERROR']}</td>
+                                <td headers="warning">{$statistics[$key]['WARNING']}</td>
+                                <td headers="info">{$statistics[$key]['INFO']}</td>
+                            {else}
+                                <td colspan="4">没有数据或者发生错误</td>
+                            {/if}
+                        </tr>
+                    {/foreach}
+                {else}
+                    <tr><td colspan="5">请启动CRA检查获取数据。&nbsp;<span class="aui-icon aui-icon-small aui-iconfont-info" title="Please decline this pull request and re-create it or push some changes to it to trigger the code review analysis again."></span></td></tr>
+                {/if}
+            </tbody>
+        </table>
+    {/if}
+    <br>
+{/template}
+
+/**
+ * This is just as a placeholder to be replaced as soon as statistics data is available.
+ */
+{template .prAnalyzerStatisticsPanelEmpty}
+<div id="cra4fr-statistics">
+</div>
+{/template}
