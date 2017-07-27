@@ -2,10 +2,13 @@ package com.fr.cra
 
 import java.io.File
 import java.net.{HttpURLConnection, MalformedURLException, URL}
+import java.util
+import java.util.Optional
 
 import com.atlassian.bitbucket.util._
 import org.apache.commons.lang3.StringUtils
 
+import scala.Option
 import scala.collection.JavaConverters
 
 
@@ -144,6 +147,38 @@ object Utils extends AnyRef {
     } else {
       result
     }
+  }
+
+  /**
+    * java Optional -> scala Option
+    *
+    * @param optional
+    * @tparam T
+    */
+  implicit final class RichJOption[T](val optional: Optional[T]) {
+
+    def asScala: Option[T] = optional match {
+      case null => null
+      case _ => if (optional.isPresent) Option(optional.get()) else None
+    }
+
+  }
+
+  /**
+    * scala Option -> java Optional
+    *
+    * @param option
+    * @tparam T
+    */
+  implicit final class RichOption[T](val option: Option[T]) {
+
+    def asJava: Optional[T] = option match {
+      case null => null
+      case _ => if (option.isDefined) Optional.of(option.get) else Optional.empty()
+    }
 
   }
 }
+
+
+

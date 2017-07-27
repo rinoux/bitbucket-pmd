@@ -3,6 +3,7 @@ package com.fr.cra.pullrequest
 import javax.ws.rs.core.Response
 import javax.ws.rs.{POST, Path, Produces}
 
+import com.atlassian.bitbucket.comment.CommentService
 import com.atlassian.bitbucket.pull.{PullRequest, PullRequestService}
 import com.atlassian.bitbucket.repository.{Repository, RepositoryService}
 import com.atlassian.bitbucket.user.{ApplicationUser, SecurityService, UserService}
@@ -32,7 +33,8 @@ class ToggleAnalysisResource @Autowired()(codeReviewAnalysisRunner : CodeReviewA
                                           serviceUserConfigDao :ServiceUserConfigDao,
                                           userService : UserService,
                                           staticAnalyzerRegistry : StaticAnalyzerRegistry,
-                                          pullRequestService : PullRequestService) extends AnyRef with Logging {
+                                          pullRequestService : PullRequestService,
+                                          commentService: CommentService) extends AnyRef with Logging {
   /**
     * 此处是代码分析启动的地方，点击run cra analysis。还有一处是PullRequestOpenedListner.onPullRequestOpened
     * @param input
@@ -89,7 +91,7 @@ class ToggleAnalysisResource @Autowired()(codeReviewAnalysisRunner : CodeReviewA
     * @param applicationUser
     */
   def deleteExistingComments(pullRequest : PullRequest, repo : Repository, applicationUser: ApplicationUser): Unit = {
-    val deleteCommentsOp = new PullRequestDeleteCommentsOp(applicationUser, pullRequest, pullRequestService, repo)
+    val deleteCommentsOp = new PullRequestDeleteCommentsOp(applicationUser, pullRequest, pullRequestService, repo, commentService)
     val reason = "Delete old comments of " + applicationUser.getDisplayName
     securityService.impersonating(applicationUser, reason).call(deleteCommentsOp)
   }

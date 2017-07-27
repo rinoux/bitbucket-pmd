@@ -1,5 +1,6 @@
 package com.fr.cra.pullrequest
 
+import com.atlassian.bitbucket.comment.CommentService
 import com.atlassian.bitbucket.pull.{PullRequest, PullRequestService}
 import com.atlassian.bitbucket.server.ApplicationPropertiesService
 import com.atlassian.bitbucket.user.{ApplicationUser, SecurityService, UserService}
@@ -20,7 +21,8 @@ class PullRequestErrorHandler @Autowired()(applicationPropertiesService : Applic
                                            pullRequestService : PullRequestService,
                                            securityService : SecurityService,
                                            serviceUserConfigDao : ServiceUserConfigDao,
-                                           userService : UserService) extends AnyRef {
+                                           userService : UserService,
+                                           commentService: CommentService) extends AnyRef {
   /**
     * 创建错误评论到pullReq
     * @param pullRequest pr
@@ -31,7 +33,7 @@ class PullRequestErrorHandler @Autowired()(applicationPropertiesService : Applic
     val craUser : ApplicationUser = getServiceUser(CODE_REVIEW_ASSISTANT_NAME)
     val violation = Violation("", 0, message, FATAL, "", "")
     val prCommentMsg = formatPullRequestComment(message, violation, repoConfig)
-    val op = new PullRequestAddMsgCommentOp(message, pullRequestService, pullRequest)
+    val op = new PullRequestAddMsgCommentOp(message, commentService, pullRequest)
     val reason = "Code Review Assistant detected a problem running on pull request"
     securityService.impersonating(craUser, reason).call(op)
   }

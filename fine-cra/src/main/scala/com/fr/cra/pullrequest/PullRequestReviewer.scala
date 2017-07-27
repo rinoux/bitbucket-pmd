@@ -3,14 +3,16 @@ package com.fr.cra.pullrequest
 import java.io.File
 import java.util.concurrent.ExecutorService
 
-import com.atlassian.bitbucket.comment.AddDiffCommentRequest
+import com.atlassian.bitbucket.comment._
 import com.atlassian.bitbucket.content.{DiffFileType, DiffSegmentType}
 import com.atlassian.bitbucket.i18n.I18nService
+import com.atlassian.bitbucket.permission.Permission
 import com.atlassian.bitbucket.pull.{PullRequest, PullRequestService}
 import com.atlassian.bitbucket.repository.{Repository, RepositoryService}
 import com.atlassian.bitbucket.scm.git.command.GitCommandBuilderFactory
 import com.atlassian.bitbucket.server.ApplicationPropertiesService
 import com.atlassian.bitbucket.user.{ApplicationUser, SecurityService, UserService}
+import com.atlassian.bitbucket.util.{PageRequestImpl, UncheckedOperation}
 import com.atlassian.plugin.spring.scanner.annotation.imports.ComponentImport
 import com.atlassian.sal.api.transaction.{TransactionCallback, TransactionTemplate}
 import com.fr.cra.analysis._
@@ -29,7 +31,7 @@ import scala.collection.JavaConverters
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.duration.DurationInt
 import scala.concurrent.{Await, ExecutionContext, Future}
-import scala.util.{Failure, Success}
+import scala.util.{Failure, Success, Try}
 
 /**
   * 整个插件的核心类
@@ -52,7 +54,8 @@ class PullRequestReviewer @Autowired()(pullRequestService : PullRequestService,
                                        cachedRepoInfo : CachedRepoInformation,
                                        i18nService : I18nService,
                                        pullRequestErrorHandler : PullRequestErrorHandler,
-                                       userService : UserService) extends AnyRef with Logging {
+                                       userService : UserService,
+                                       commentService: CommentService) extends AnyRef with Logging {
   implicit val executionContext = ExecutionContext.fromExecutorService(executorService)
 
   /**
@@ -193,7 +196,7 @@ class PullRequestReviewer @Autowired()(pullRequestService : PullRequestService,
     val thisPullRequestDir = cachedRepoInfo.getCachedPRCheckoutDir(review.pullRequest)
     val repository = review.pullRequest.getToRef.getRepository
     //diffcomments
-    var diffComments = new ListBuffer[AddDiffCommentRequest]()
+    var diffComments = new ListBuffer[AddFileCommentRequest]()
     //linecomment
     //var lineComments = new ListBuffer[AddPullRequestLineCommentRequest]()
     //是否在变动diff行上,不需要了
@@ -213,8 +216,9 @@ class PullRequestReviewer @Autowired()(pullRequestService : PullRequestService,
       val violationMsg = createCommentText(processor, vio, repoConfig)
 
       if (commentDoesNotExistYet(review, repository, filePathInRepo, violationMsg, vio.line)) {
-        diffComments.+=(createDiffComment(vio, filePathInRepo, violationMsg))
+        //diffComments.+=(createDiffComment(vio, filePathInRepo, violationMsg))
         //lineComments.+=(createLineComment(review.pullRequest, vio, filePathInRepo, violationMsg))
+        diffComments.+=(createDiffComment(vio, filePathInRepo, violationMsg, review.pullRequest))
       }
       reviewResult.addViolation(vio)
     })
@@ -229,7 +233,7 @@ class PullRequestReviewer @Autowired()(pullRequestService : PullRequestService,
     })
     */
 
-    val op = new PullRequestAddDiffCommentOp(diffComments.toList,repository, pullRequestService, review.pullRequest)
+    val op = new PullRequestAddDiffCommentOp(diffComments.toList, commentService)
     transactionTemplate.execute(new TransactionCallback[Unit] {
       override def doInTransaction(): Unit = {
         securityService.impersonating(getServiceUser(processor.getName), reason).call(op)
@@ -265,18 +269,30 @@ class PullRequestReviewer @Autowired()(pullRequestService : PullRequestService,
   }
 
   def commentDoesNotExistYet(review: Review, repository: Repository, filePath : String, text : String, line : Int) : Boolean = {
-    val commentAnchors = pullRequestService.findCommentAnchors(repository.getId, review.pullRequest.getId, filePath)
-    !JavaConverters.iterableAsScalaIterableConverter(commentAnchors).asScala.exists(d => d.getLine == line && d.getComment.getText.equals(text))
+    val searchRequest: CommentSearchRequest = new CommentSearchRequest.Builder(review.pullRequest.asInstanceOf[Commentable]).path(filePath).build()
+    val threads: Iterable[CommentThread] = this.securityService.withPermission(Permission.REPO_READ, "Read repo outside of auth context").call(
+      new UncheckedOperation[Iterable[CommentThread]]() {
+      override def perform(): Iterable[CommentThread] = {
+        JavaConverters.iterableAsScalaIterableConverter(commentService.searchThreads(searchRequest, new PageRequestImpl(0, 9999)).getValues()).asScala
+      }
+    })
+
+    val matchingComments: Iterable[CommentThread] = threads.flatMap(thread => {
+      Option.option2Iterable[CommentThread](Utils.RichJOption(thread.getAnchor)
+        .asScala
+        .withFilter(anchor => thread.getRootComment.getText == text && anchor.getLine == line)
+        .map(_ => thread))
+    })
+
+    matchingComments.isEmpty
   }
 
-  def createDiffComment(violation: Violation, filePathInRepo : String, violationMsg : String) : AddDiffCommentRequest = {
-    new AddDiffCommentRequest.Builder().line(violation.line).text(violationMsg).path(filePathInRepo).fileType(DiffFileType.TO).lineType(DiffSegmentType.ADDED).build()
+  def createDiffComment(violation : Violation, filePathInRepo: String, violationMsg: String, pullRequest: PullRequest) : AddFileCommentRequest = {
+    if (violation.line > 0) {
+      new AddLineCommentRequest.Builder(pullRequest, violationMsg, CommentThreadDiffAnchorType.EFFECTIVE, filePathInRepo).fileType(DiffFileType.TO)
+        .lineType(DiffSegmentType.ADDED).line(violation.line).build()
+    } else new AddFileCommentRequest.Builder(pullRequest.asInstanceOf[Commentable], violationMsg, CommentThreadDiffAnchorType.EFFECTIVE, filePathInRepo).build()
   }
-  /*
-  def createLineComment(pullRequest: PullRequest, violation: Violation, filePathInRepo : String, violationMsg : String) : AddPullRequestLineCommentRequest = {
-    new AddPullRequestLineCommentRequest.Builder(pullRequest).line(violation.line).text(violationMsg).path(filePathInRepo).fileType(DiffFileType.TO).lineType(DiffSegmentType.ADDED).build()
-  }
-  */
 
   /**
     * 删除已有评论
@@ -291,7 +307,7 @@ class PullRequestReviewer @Autowired()(pullRequestService : PullRequestService,
         staticAnalyzerRegistry.onlyEnabledAnalyzers(repoConfig).foreach(f => {
           //调用PullRequestDeleteCommentsOp.perform
           val user = getServiceUser(f.getName)
-          val deleteCommentsOp = new PullRequestDeleteCommentsOp(user, review.pullRequest, pullRequestService, repo)
+          val deleteCommentsOp = new PullRequestDeleteCommentsOp(user, review.pullRequest, pullRequestService, repo, commentService)
           val reason = "Delete old comments of " + user.getDisplayName
           securityService.impersonating(user, reason).call(deleteCommentsOp)
         })
